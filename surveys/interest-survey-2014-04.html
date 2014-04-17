@@ -57,7 +57,7 @@
       #instructions {
         font-size: 18px;
         font-weight: 200;
-        opacity: .5;
+        opacity: .75;
         width: 50%;
         line-height: 28px;
       }
@@ -224,19 +224,27 @@
     <h1>Interest Survey</h1>
     <div id="instructions">
       <p>
-        This survey will be used to assess where the C5 Steering committee should be focusing its efforts and
-        to provide insight the company's current fields of experise and which technologies and practices are
-        gaining or losing importance. Each skill has two sliders. The first specifies your interest in acquiring
-        more skill or experience with that technology (a higher value indicates a strong interest, and a
-        lower value indicates the skill isn't worth pursuing). The second slider specifies
-        your current level of expertise. In both cases, if you are unfamiliar with the technology, you should leave
-        the sliders in their default positions.
+        This survey will assess where the C5 Steering committee should be focusing its efforts and
+        provides insight about the company's current fields of expertise and technological direction. 
       </p>
       <p>
-        <b>Navigation:</b> You may use the up and down arrow keys or the 'k' and 'j' keys to move between questions. You can use
-        the right or left arrow keys or the 'h' and 'l' keys to adjust the value of a slider. You may also
-        use the 0-9 keys to set the value from lowest to highest values.
-      </p>
+        <b>Instructions:</b> 
+        <ol>
+          <li>Interest slider: select your interest in learning more about the technology from 
+              disinterested (blue, left), to ambivalent (center, white), to motivated (red, right).</li>
+
+          <li>For each experience slider, estimate your level of experience with the technology from none (left) 
+              to master (right).</li>
+
+          <li>If you are unfamiliar with a technology, ignore it (middle interest, no experience).</li>
+
+          <li>Up, down, j, k keys: Select next or previous question</li>
+
+
+          <li>Right, left, h, l, 0-9 keys: Choose a slider value.</li>
+
+        </ol>
+    </p>
     </div>
     <div id="login">Log in</div>
     <script>
