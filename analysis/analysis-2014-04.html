@@ -1,0 +1,712 @@
+<html>
+  <head>
+    <title>Survey Analysis</title>
+    <meta charset="utf-8">
+    <style>
+      html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+
+      body {
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        margin: 0;
+        background-color: #232e3e;
+        color: #fff;
+        margin-bottom: 100px;
+      }
+
+      h1, h2 {
+        font-weight: 400;
+        padding: 0 10%;
+      }
+
+      h1 {
+        font-size: 150px;
+        margin: .75em 0 .6em;
+        font-weight: 100;
+        letter-spacing: 20px;
+      }
+
+      h2 {
+        font-size: 80px;
+        margin: .75em 0 .6em;
+        font-weight: 100;
+        letter-spacing: 5px;
+        text-align: center;
+      }
+
+      h3 {
+        display: inline-block;
+        width: 49%;
+        font-weight: 100;
+        font-size:25px;
+        margin: 10px 0;
+        padding: 0;
+      }
+
+      h3 span {
+        font-size:80px;
+
+      }
+
+      #login {
+        font-size: 80px;
+        margin: 1em 0 .75em 0;
+        font-weight: 100;
+        letter-spacing: 0;
+        color: #09f;
+        cursor: pointer;
+        text-align: center;
+        display: none;
+        width: 50%;
+        padding: 0 10%;
+      }
+
+      #login:hover {
+        color: #9cf;        
+      }
+
+      #login::after {
+        content: "➟";
+        font-size: 120px;
+        margin: 0 0 0 20px;
+        vertical-align: middle;
+      }
+
+      .unauthenticated #login {
+        display: block;
+      }
+
+      .unauthenticated #stats {
+        display: none;
+      }
+
+      #stats {
+        padding: 0 10%;
+      }
+
+      .icons img {
+        width: 25px;
+        height: 25px;
+        margin-right: 1em;
+      }
+
+      ul {
+        list-style: none;
+        margin: 30px 0;
+        padding: 0;
+      }
+
+      li {
+        margin: 0;
+        margin-bottom: 1em;
+        display: inline-block;
+        width: 25%;
+      }
+
+      li span {
+        font-size: 16px;
+        font-weight: 100;
+      }
+
+#all-data {
+  width: 100%;
+  height: 950px;
+}
+
+#all-data path {
+  stroke-width: .8;
+  fill: none;
+  z-index: 1;
+}
+#all-data path.fill {
+  stroke: none;
+  fill: rgba(35,46,62,.75);
+}
+
+#all-data text {
+  font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-weight: 100;
+  font-size: 12px;
+  margin: 0;
+  fill: #fff;
+  opacity: .2;
+  text-anchor: end;
+  letter-spacing: 1px;
+  transition: opacity .2s ease;
+  -moz-transition: opacity .2s ease;
+  -webkit-transition: opacity .2s ease;
+}
+
+#all-data text.highlighted {
+  opacity: 1;
+  font-weight: 200;
+  font-size: 14px;
+}
+
+#all-data .topic-labels text {
+  opacity: .04;
+  font-weight: 200;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+#all-data .topic-labels text.highlighted {
+  opacity: 1;
+}
+
+#all-data .pa {
+  opacity: .333;
+}
+
+#all-data #legend-line {
+  stroke-width: .3;
+  stroke: url(#legend-gradient);
+}
+
+#all-data .legend-label {
+  opacity: .5;
+}
+
+#all-data .legend-label.right {
+    text-anchor: start;
+}
+
+#ad-indicator {
+  display: none;
+}
+
+#ad-indicator.selected {
+  display: block;
+}
+
+#ad-experience-outer, #ad-interest {
+  stroke: #fff;
+  stroke-width: .75;
+}
+
+#ad-experience-outer {
+  fill: none;
+}
+
+#ad-experience-inner {
+  fill:#fff;
+  stroke:none;
+}
+
+#all-responses-header {
+  margin-bottom: -150px;
+}
+    </style>
+    <script src="https://cdn.firebase.com/js/client/1.0.11/firebase.js"></script>
+    <script src='https://cdn.firebase.com/js/simple-login/1.3.2/firebase-simple-login.js'></script>
+  </head>
+  <body>
+    <h1>Interest Survey<br> 04 2014 Analysis</h1>
+    <div id="login">Log in</div>
+    <h2>Stats</h2>
+    <div id="stats">
+      <h3><span class="respondees"></span> surveys</h3>
+      <h3><span class="category-count"></span> topics</h3>
+      <h3><span class="interest-responses"></span> indications of interest</h3>
+      <h3><span class="experience-responses"></span> claims of experience</h3>
+      <ul class="icons"></ul>
+    </div>
+    <h2 id="all-responses-header">All Responses</h2>
+    <svg id="all-data"></svg>
+
+  </body>
+  <script>
+
+var baseRef = new Firebase('https://blistering-fire-2106.firebaseio.com/surveys');
+var surveyName = 'survey-2014-04';
+  
+///////////////////// Authentication ////////////////////////////
+
+var auth = new FirebaseSimpleLogin(baseRef, function(error, user) {
+  if ( user !== null ) {
+    document.body.setAttribute('class','')
+
+    var userRef = baseRef.child(user.id);
+    userRef.child('profile').set(user);
+    firebaseSurvey = userRef.child(surveyName);
+    startAnalysis()
+  } else {
+    document.body.setAttribute('class','unauthenticated')
+  }
+});
+
+document.getElementById('login').onclick = function() {
+  auth.login('google', { preferRedirect: true });
+}
+
+/////////////////// All Data ////////////////////////////////
+
+var allData = (function(c){
+  var LINE_WIDTH = 800;
+  var Y_OFFSET = 20;
+  var X_OFFSET = 8;
+  var Y_LINE_OFFSET = 13;
+  var LEFT_MARGIN = 600;
+  var INTEREST_RADIUS = 7;
+
+  // OUR DATA
+  var people = [];
+  var categories;
+  var lastEvent;
+
+  function svgInterp( x0, y0, x1, y1, x2, y2, x3, y3, smooth ) {
+    return (smooth ? 'S' : 'C'+x1+','+((-5*y0 + 18*y1 - 9*y2 + 2*y3) / 6)+' ')
+              +x2+','+((2*y0 - 9*y1 + 18*y2 - 5*y3) / 6)+' '
+              +x3+','+y3+' ';
+  }
+
+  function svgLine( f, maxX, xOffset, yOffset, xScale, yScale, fill ) {
+    var d = (fill ? 'M'+xOffset+','+(yOffset+40)+' L' : 'M') +xOffset+',' + (yOffset + yScale*f(0)) +' ';
+    for (var i=0;i<maxX; i++) {
+      var x0 = i, y0 = f(x0);
+      var x1 = i+1/3, y1 = f(x1);
+      var x2 = i+2/3, y2 = f(x2);
+      var x3 = i+1, y3 = f(x3);
+      d+= svgInterp(  xScale*x0 + xOffset, yScale*y0+yOffset, 
+                      xScale*x1 + xOffset, yScale*y1+yOffset, 
+                      xScale*x2 + xOffset, yScale*y2+yOffset, 
+                      xScale*x3 + xOffset, yScale*y3+yOffset, i>0 );
+    }
+    if (fill)
+      d += 'L'+(xScale*x3 + xOffset)+','+(yOffset+40);
+    return d;
+  }
+
+  function createStop(fraction, color) {
+    var stop = document.createElementNS("http://www.w3.org/2000/svg",'stop');
+    stop.setAttribute('offset', (100*fraction)+'%');
+    stop.setAttribute('stop-color',color);
+    return stop;
+  }
+
+  function interp(low, high, x) { return low + x*(high-low); }
+  function upper(x) { return 2*(x-.5); }
+  function lower(x) { return 2*x; }
+
+  function colorForFraction(fraction) {
+    var mr = 160, mg = 220, mb = 240;
+    var r = (fraction < .5 ? interp(55,mr,lower(fraction)) : interp(mr,255,upper(fraction)))|0;
+    var g = (fraction < .5 ? interp(187,mg,lower(fraction)) : interp(mg,245,upper(fraction)))|0;
+    var b = (fraction < .5 ? interp(255,mb,lower(fraction)) : interp(mb, 145,upper(fraction)))|0;
+    return 'rgba('+r+','+g+','+b+',.85)';
+  }
+
+  function colorForCategoryInterest(person, category) {
+    var interest = (person.categories[category]||{}).interest;
+    var fraction = interest != null ? interest : .5;
+    return colorForFraction(fraction);
+  }
+
+  function sinc( x ) {
+    return Math.exp( -(x*x) / .75 );
+  //  return x == 0 ? 1 : Math.sin(Math.PI*x) / (Math.PI*x)
+  }
+
+  function sincSum( x, data, win, scale ) {
+    var val = 0, 
+      start = Math.max(0,Math.ceil(x-win)), 
+        end = Math.min(categories.length-1, Math.floor(x+win));
+    for (var i=start; i<=end; i++) {
+      var category= data[categories[i].key];
+      if (category && category.experience)
+        val += scale(category.experience) * sinc(x-i)
+    }
+    return val;
+  }
+
+  function scale(d) {
+    return 20 * (Math.pow(d,4))
+  }
+
+  function sincLine(data) {
+    return function(x) {
+      return sincSum(x,data,2,scale);
+    }
+  }
+
+  function eventSinc(sincl, mx, my, i, xOffset, yOffset, xScale, yScale) {
+    return function(x) {
+      var x0 = mx - xOffset - xScale * x;
+      var y0 = my - yOffset - 40*yScale;
+      var dx = Math.sqrt(x0*x0 + y0*y0)/200;
+      return sincl(x) + 3*sinc(dx)/(dx + .05);
+    }
+  }
+
+  function yoffset(i) { return (i+Y_LINE_OFFSET) * Y_OFFSET; }
+  function xoffset(i) { return LEFT_MARGIN-(i+Y_LINE_OFFSET) * X_OFFSET; }
+  function mousex(e) { return e.clientX - c.offsetLeft }
+  function mousey(e) { return e.clientY - c.offsetTop + document.body.scrollTop }
+
+  function rerender(e) {
+    var xScale = LINE_WIDTH / categories.length;
+    var yScale = -5;
+    var maxX = categories.length;
+    for (var i=0;i<people.length;i++) {
+      var yOffset = yoffset(i); 
+      var xOffset = xoffset(i);
+      var sincl = sincLine(people[i].categories);
+      var f = !e ? sincl : eventSinc(sincl, mousex(e), mousey(e), i, xOffset, yOffset, xScale, yScale);
+      document.getElementById('fillpath-'+i).setAttribute("d",svgLine(f,maxX,xOffset,yOffset,xScale,yScale,true));
+      document.getElementById('path-'+i).setAttribute("d",svgLine(f,maxX,xOffset,yOffset,xScale,yScale));
+    }
+
+    if (e) {
+      lastEvent = e;
+
+      var my = (mousey(e) - 40*yScale) / Y_OFFSET - Y_LINE_OFFSET;
+      var mx = (mousex(e) - xoffset(my)) / xScale;
+
+      var nameLabels = c.querySelectorAll('.ad-person');
+      for (var i=0,nl; nl=nameLabels[i]; i++)
+        nl.setAttribute('class','ad-person');
+
+
+      var categoryLabels = c.querySelectorAll('.ad-category');
+      for (var i=0,cl; cl=categoryLabels[i]; i++)
+        cl.setAttribute('class','ad-category');
+
+      var indicator = document.getElementById('ad-indicator');
+      indicator.setAttribute('class','')
+
+      var selectedName = document.getElementById('person-'+Math.round(my));
+      var selectedCategory = document.getElementById('category-'+Math.round(mx));
+
+      if (selectedName && selectedCategory) {
+        selectedName.setAttribute('class','ad-person highlighted');
+        selectedCategory.setAttribute('class','ad-category highlighted');
+
+        var dx = xoffset(Math.round(my))+LINE_WIDTH + 16;
+        var dy = yoffset(Math.round(my));
+        indicator.setAttribute('transform','translate('+dx+','+dy+')')
+        indicator.setAttribute('class','selected')
+
+        var person = people[Math.round(my)];
+        var category = person.categories[categories[Math.round(mx)].key] || {};
+        document.getElementById('ad-experience-inner').setAttribute('r', INTEREST_RADIUS*(category.experience || 0));
+        document.getElementById('ad-interest').setAttribute('fill', 
+          colorForFraction(category.interest == null ? .5 : category.interest));
+      }
+    }
+  }
+
+  function renderLegend() {
+    var gradient = document.createElementNS("http://www.w3.org/2000/svg",'linearGradient');
+    gradient.appendChild(createStop(0, colorForFraction(0)));
+    gradient.appendChild(createStop(1, colorForFraction(1)));
+    gradient.id='legend-gradient';
+    c.appendChild(gradient);
+
+    var line = document.createElementNS("http://www.w3.org/2000/svg",'path');
+    line.id="legend-line"
+    line.setAttribute("d",'M'+(xoffset(-2)+.1*LINE_WIDTH)+','+(yoffset(-2))
+      +' L'+(xoffset(-2)+.9*LINE_WIDTH)+','+(yoffset(-2)+.001))
+    c.appendChild(line);
+
+    var label = document.createElementNS("http://www.w3.org/2000/svg",'text');
+    label.innerHTML = 'disinterested';
+    label.setAttribute('class','legend-label left');
+    label.setAttribute('x',xoffset(-2)+.1*LINE_WIDTH - 20);
+    label.setAttribute('y',yoffset(-2) + 3);
+    c.appendChild(label);
+
+    var label = document.createElementNS("http://www.w3.org/2000/svg",'text');
+    label.innerHTML = 'interested';
+    label.setAttribute('class','legend-label right');
+    label.setAttribute('x',xoffset(-2)+.9*LINE_WIDTH + 20);
+    label.setAttribute('y',yoffset(-2) + 3);
+    c.appendChild(label);
+  }
+
+  function createCircle(id, radius, x, y) {
+    var circle = document.createElementNS("http://www.w3.org/2000/svg",'circle');
+    circle.id = id;
+    circle.setAttribute('r',radius);
+    circle.setAttribute('cx',x);
+    circle.setAttribute('cy',y);
+    return circle;
+  }
+
+  function renderIndicator() {
+    var indicator = document.createElementNS("http://www.w3.org/2000/svg",'g');
+    indicator.id = 'ad-indicator';
+    indicator.setAttribute('transform', 'translate(200,200)');
+
+    c.appendChild(indicator);
+
+    indicator.appendChild( createCircle('ad-experience-outer', INTEREST_RADIUS, 0, 0) );
+    indicator.appendChild( createCircle('ad-experience-inner', INTEREST_RADIUS, 0, 0) );
+    indicator.appendChild( createCircle('ad-interest', INTEREST_RADIUS, 23, 0) );
+  }
+
+  function renderVisualization( ) {
+    LEFT_MARGIN = people.length * X_OFFSET + (document.body.offsetWidth - 800) / 2;
+    c.innerHTML = '';
+
+    renderLegend();
+
+    for (var i=0;i<people.length;i++) {
+      var person = people[i];
+
+      gradient = document.createElementNS("http://www.w3.org/2000/svg",'linearGradient');
+      gradient.appendChild(createStop(0, colorForCategoryInterest(person,categories[0].key)));
+      for (var j=0; j<categories.length; j++) {
+        var offset = (j+.5)/categories.length;
+        gradient.appendChild(createStop(offset, colorForCategoryInterest(person,categories[j].key)));
+      }
+      gradient.appendChild(createStop(1, colorForCategoryInterest(person,categories[j-1].key)));
+      gradient.id='gradient-'+i;
+      c.appendChild(gradient);
+
+      line = document.createElementNS("http://www.w3.org/2000/svg",'path');
+      line.id = 'fillpath-'+i;
+      line.setAttribute("class","fill")
+      c.appendChild(line)
+
+      line = document.createElementNS("http://www.w3.org/2000/svg",'path');
+      line.id = 'path-'+i;
+      line.setAttribute('stroke', 'url(#gradient-'+i+')')
+      c.appendChild(line);
+
+      var name = document.createElementNS("http://www.w3.org/2000/svg",'text');
+      name.id = 'person-'+i;
+      name.innerHTML = people[i].name;
+      name.setAttribute('class','ad-person');
+      name.setAttribute('x',xoffset(i) - 20);
+      name.setAttribute('y',yoffset(i) + 2);
+      c.appendChild(name);
+    }
+
+    var topicLabels = document.createElementNS("http://www.w3.org/2000/svg",'g');
+    var skew = -55 * X_OFFSET/Y_OFFSET;
+    topicLabels.setAttribute('transform',' translate('+xoffset(i-2)+','+yoffset(i)+') skewX('+skew+')  rotate(-90)');
+    topicLabels.setAttribute('class','topic-labels');
+    c.appendChild(topicLabels);
+
+    for (var i=0; i<categories.length; i++) {
+      var name = document.createElementNS("http://www.w3.org/2000/svg",'text');
+      name.id = 'category-'+i;
+      name.innerHTML = categories[i].name.substring(0,23);
+      name.setAttribute('class','ad-category');
+      name.setAttribute('x',0);
+      name.setAttribute('y', i * LINE_WIDTH / categories.length);
+      topicLabels.appendChild(name);
+    }
+
+    renderIndicator();
+  }
+
+  function setData(categories_in, respondees) {
+    people = [];
+    for (var key in respondees) {
+      respondees[key].userID = key;
+      people.push(respondees[key]);
+    }
+
+    categories = [];
+    for (var key in categories_in) {
+      categories_in[key].key = key;
+      categories.push(categories_in[key]);
+    }
+    categories.sort(function(a,b) {
+      return a.avgInterest - b.avgInterest;
+    })
+
+    renderVisualization();
+
+    c.onmousemove = rerender;
+    var oldresize = window.onresize;
+    window.onresize = function(e) {
+      if (oldresize) oldresize(e);
+      renderVisualization();
+      rerender();
+    }
+    rerender(lastEvent);
+  }
+
+  return {setData:setData}
+})(document.getElementById('all-data'));
+
+//////////////////////// Firebase Query //////////////////////////////////
+
+function startAnalysis() {
+  var stats = document.querySelector('#stats');
+  var respondeeCount = 0;
+  var categoryCount = 0;
+  var interestCount = 0;
+  var experienceCount = 0;
+  var respondees = {};
+  var categories = {};
+
+  baseRef.on('child_added', function(snapshot) {
+    respondeeCount++;
+
+    var userID = snapshot.name();
+    respondees[userID] = {categories:{}};
+
+    var userRef = baseRef.child(snapshot.name())
+    userRef.child('profile/thirdPartyUserData/picture').on('value', function(picture) { 
+      respondees[userID].picture = picture.val();      
+      ghostImage(respondees[userID].picture, userID);
+      needsRender();
+    });
+    userRef.child('profile/displayName').on('value', function(snapshot) { 
+      respondees[userID].name = snapshot.val(); 
+      needsRender();
+    });
+    userRef.child(surveyName).on('child_added', function(snapshot) {
+      var category = categories[snapshot.name()];
+      if (!category) {
+        category = categories[snapshot.name()] = {interestCount:0,avgInterest:0,experienceCount:0,avgExperience:0};
+        categoryCount++;
+      }
+
+      var userChar = {};
+      respondees[userID].categories[snapshot.name()] = userChar;
+
+      var categoryRef = userRef.child(surveyName).child(snapshot.name());
+
+      categoryRef.child('name').on('value', function(snapshot) {
+        userChar.name = category.name = snapshot.val();
+        needsRender();
+      });
+
+      categoryRef.child('interest').on('value',function(snapshot) {
+        if ((snapshot.val() != .5) && (userChar.interest == null || userChar.interest == .5))
+          interestCount++;
+        if (snapshot.val() == .5 && userChar.interest != .5)
+          interestCount--;
+
+        if (userChar.interest == null) {
+          category.avgInterest = (category.avgInterest*category.interestCount + snapshot.val()) / (category.interestCount+1);
+          category.interestCount += 1;
+        } else {
+          category.avgInterest += (snapshot.val() - userChar.interest) / category.interestCount;
+        }
+        userChar.interest = snapshot.val();
+        needsRender();
+      })
+
+      categoryRef.child('experience').on('value',function(snapshot) {
+        if (snapshot.val() != 0 && !userChar.experience)
+          experienceCount++;
+        if (snapshot.val() == 0 && userChar.experience)
+          experienceCount--;
+
+        if (userChar.experience == null) {
+          category.avgExperience = (category.avgInterest*category.experienceCount + snapshot.val()) / (category.experienceCount+1);
+          category.experienceCount += 1;
+        } else {
+          category.avgExperience += (snapshot.val() - userChar.experience) / category.experienceCount;
+        }
+        userChar.experience = snapshot.val();
+        needsRender();
+      })
+    });
+    needsRender();
+  })
+
+  var renderTimeout;
+  function needsRender() {
+    clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(renderStats,1);
+  }
+
+  function ghostImage( src, userID ) {
+    var image = new Image()
+    image.crossOrigin = '';
+    image.src = src;
+    image.onload = function() {
+      var canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(image,0,0);
+      var data = ctx.getImageData(0,0,image.width,image.height).data;
+
+      var available = false;
+      for (var i=0; i<16; i++) {
+        if (data[i] != [160,195,255,255][i%4]) {
+          available = true;
+          break;
+        }
+      }
+
+      if (available)
+        renderGhost( data, ctx );
+      else
+        renderName(ctx,userID);
+
+      respondees[userID].picture = canvas.toDataURL();
+      for (var i=0, avatars=document.querySelectorAll('.ua-'+userID), l=avatars.length; i<l; i++)
+        avatars[i].src = respondees[userID].picture;
+    }
+    if (image.complete) image.onload();
+  }
+
+  function renderGhost( data, ctx ) {
+    var next = ctx.createImageData(ctx.canvas.width,ctx.canvas.height);
+    var nextData = next.data;
+
+    for (var i=0, l=data.length; i<l; i+=4) {
+      var alpha = Math.floor( 2*((data[i] + data[i+1] + data[i+2])/3 - 128) );
+      nextData[i] = nextData[i+1] = nextData[i+2] = 255;
+      nextData[i+3] = alpha;
+    }
+    ctx.putImageData(next, 0,0);    
+  }
+
+  function renderName( ctx, userID ) {
+    var name = respondees[userID].name;
+    var match = /^(\w)\w*\s+(\w)/.exec(name);
+    match = match || [0,'?','?'];
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.font = '200px Helvetica';
+    ctx.save()
+    ctx.scale(ctx.canvas.width/512,ctx.canvas.height/512);
+    ctx.translate(ctx.canvas.width/2,ctx.canvas.height/2);
+    ctx.save();
+      ctx.rotate(Math.PI/2);
+      ctx.fillText(match[1],-80,-30);
+    ctx.restore();
+    ctx.save();
+      ctx.scale(-1,1)
+      ctx.rotate(Math.PI/2);
+      ctx.fillText(match[1],-80,-30);
+    ctx.restore();
+    ctx.save();
+      ctx.rotate(Math.PI);
+      ctx.fillText(match[2],-30,-20);
+    ctx.restore();
+    ctx.save();
+      ctx.scale(-1,1)
+      ctx.rotate(Math.PI);
+      ctx.fillText(match[2],-30,-20);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  function renderStats() {
+    stats.querySelector('.respondees').innerHTML = respondeeCount;
+    stats.querySelector('.category-count').innerHTML = categoryCount;
+    stats.querySelector('.interest-responses').innerHTML = interestCount;
+    stats.querySelector('.experience-responses').innerHTML = experienceCount;
+    var attendance = '';
+    for (var userID in respondees)
+      attendance += '<li id="user-'+userID+'"><img class="ua-'+userID+'" src="'+respondees[userID].picture+'"/><span>'+respondees[userID].name+'</span></li>';
+    stats.querySelector('.icons').innerHTML = attendance;
+
+    allData.setData( categories, respondees );
+  }
+}
+  </script>
+</html>
