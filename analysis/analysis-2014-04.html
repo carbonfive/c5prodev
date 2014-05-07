@@ -718,7 +718,7 @@ function startAnalysis() {
           experienceCount--;
 
         if (userChar.experience == null) {
-          category.avgExperience = (category.avgInterest*category.experienceCount + snapshot.val()) / (category.experienceCount+1);
+          category.avgExperience = (category.avgExperience*category.experienceCount + snapshot.val()) / (category.experienceCount+1);
           category.experienceCount += 1;
         } else {
           category.avgExperience += (snapshot.val() - userChar.experience) / category.experienceCount;
