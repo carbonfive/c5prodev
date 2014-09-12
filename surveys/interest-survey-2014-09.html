@@ -55,11 +55,11 @@
       }
 
       #instructions {
-        font-size: 18px;
-        font-weight: 200;
+        font-size: 24px;
+        font-weight: 100;
         opacity: .75;
         width: 50%;
-        line-height: 28px;
+        line-height: 1.75em;
       }
 
       #instructions p {
@@ -68,8 +68,15 @@
 
       #instructions b {
         font-weight: 400;
-        font-size:22px;
         margin-right: .5em;
+      }
+
+      #instructions li {
+        list-style: none;
+      }
+
+      span.stroke {
+        font-weight: 600;
       }
 
       .unauthenticated fieldset {
@@ -224,26 +231,18 @@
     <h1>Interest Survey</h1>
     <div id="instructions">
       <p>
-        This survey will assess where the C5 Steering committee should be focusing its efforts and
-        provides insight about the company's current fields of expertise and technological direction. 
+        What excites us right now in the technology space? Let us know how interested 
+        you are in each technology and how much experience you currently have with it. If you are unfamiliar with a technology
+        leave it where it is.
       </p>
       <p>
-        <b>Instructions:</b> 
-        <ol>
-          <li>Interest slider: select your interest in learning more about the technology from 
-              disinterested (blue, left), to ambivalent (center, white), to motivated (red, right).</li>
-
-          <li>For each experience slider, estimate your level of experience with the technology from none (left) 
-              to master (right).</li>
-
-          <li>If you are unfamiliar with a technology, ignore it (middle interest, no experience).</li>
-
-          <li>Up, down, j, k keys: Select next or previous question</li>
+        <ul>
+          <li><span class="stroke">&#11014;, &#11015;, j, k</span>: Select question.</li>
 
 
-          <li>Right, left, h, l, 0-9 keys: Choose a slider value.</li>
+          <li><span class="stroke">&#11013;, &#10145;, h, l, 0-9</span>: Select value.</li>
 
-        </ol>
+        </ul>
     </p>
     </div>
     <div id="login">Log in</div>
